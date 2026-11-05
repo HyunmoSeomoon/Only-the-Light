@@ -1,0 +1,103 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class PlayerState : MonoBehaviour
+{
+    [Header("상태 저장")]
+   // private int letterCount = 0;
+    private bool hasCrowbar = false;
+    private bool hasKey = false;
+
+    [Header("Escape UI")]
+    public GameObject escapeUI;
+    private bool isGameOverTriggered = false;
+
+    [Header("Enemy 참조")]
+    public GameObject enemyA;
+    public GameObject enemyB;
+    public GameObject enemyC;
+
+    void Update()
+    {
+        //CheckHiddenEndingTrigger();
+        CheckDeadEndingTrigger();
+    }
+    
+
+    // 📩 Letter 획득
+    // public void CollectLetter()
+    // {
+    //  letterCount++;
+    //   Debug.Log($"📩 편지 {letterCount}개 획득");
+    //  }
+
+    // public int GetLetterCount() => letterCount;
+
+    // 🔧 Crowbar
+    public void ObtainCrowbar()
+    {
+        hasCrowbar = true;
+        Debug.Log("🔧 Crowbar 획득");
+    }
+
+    // 🗝️ Key
+    public void ObtainKey()
+    {
+        hasKey = true;
+        Debug.Log("🗝️ 열쇠 획득");
+    }
+
+    public bool HasKey() => hasKey;
+
+    // 🎯 탈출 시도 (열쇠 있을 때 InteractionManager에서 호출)
+    public void CheckEscapeTrigger()
+    {
+        GameManager.Instance.SetPhase(GamePhase.GameOver);
+        SceneManager.LoadScene("EscapeScene");
+        GameManager.Instance.UnlockCursor();
+    }
+
+    // ✅ 히든엔딩 조건 확인: Update에서 체크
+    public void CheckHiddenEndingTrigger()
+    {
+        SceneManager.LoadScene("HiddenEndingScene");
+        GameManager.Instance.SetPhase(GamePhase.GameOver);
+        GameManager.Instance.UnlockCursor();
+    }
+
+    // ☠️ 적에게 잡힘
+    private void CheckDeadEndingTrigger()
+    {
+        CheckOneEnemy(enemyA);
+        CheckOneEnemy(enemyB);
+        CheckOneEnemy(enemyC);
+    }
+
+private void CheckOneEnemy(GameObject enemy)
+{
+    if (enemy == null || isGameOverTriggered) return;
+
+    var ai = enemy.GetComponent<MonsterAI>();
+    if (ai != null && ai.IsChasingPlayer()) // ✅ 상태 체크 메서드로 교체
+    {
+        float dist = Vector3.Distance(transform.position, ai.transform.position);
+        if (dist <= 2.5f)
+        {
+            Debug.Log("☠️ 적에게 잡힘 - " + enemy);
+            isGameOverTriggered = true;
+            ai.ShowScareUI();
+            StartCoroutine(TriggerGameOverAfterDelay());
+            }
+    }
+}
+
+
+    private IEnumerator TriggerGameOverAfterDelay()
+    {
+        yield return new WaitForSeconds(2f); // 3초 대기
+        GameManager.Instance.SetPhase(GamePhase.GameOver);
+        GameSceneManager.Instance.LoadDeadEndingScene();
+        GameManager.Instance.UnlockCursor();
+    }
+}
